@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BO 인터뷰 시스템 · Supabase 저장형 v6</title>
+<title>BO 인터뷰 시스템 · Supabase 저장형 v7</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#6b7280;--primary:#2563eb;--soft:#eff6ff}
@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px
 <body>
 <div class="app">
 <aside class="side">
-<h1>BO 인터뷰 시스템</h1><p>Supabase DB 저장형 · v6 개인별/전체집계</p>
+<h1>BO 인터뷰 시스템</h1><p>Supabase DB 저장형 · v7 Placeholder</p>
 <div class="nav">
 <button class="active" onclick="nav('setup',this)">0. 연결 설정</button>
 <button onclick="nav('dashboard',this)">1. Dashboard</button>
@@ -197,6 +197,10 @@ function renderSection(){
   </div>`;
 }
 function getResponse(interviewId,questionId){return state.responses.find(r=>r.interview_id===interviewId&&r.question_id===questionId)}
+
+function escAttr(v){
+ return String(v||'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+}
 function qHtml(interviewId,q){
  const r=getResponse(interviewId,q.id)||{};
  const meta=getQuestionMeta(q);
@@ -212,7 +216,7 @@ function qHtml(interviewId,q){
      ${meta.priorityRequired?'<span class="chip purple">Priority 필요</span>':''}
    </div>
    <div class="qtitle">${q.question_text}</div>
-   <textarea data-answer="${q.id}" data-required="${meta.required}">${r.answer_text||''}</textarea>
+   <textarea data-answer="${q.id}" data-required="${meta.required}" placeholder="${escAttr(q.placeholder_text||q.placeholder||'구체적인 사례, 사용 화면/컬럼명, 처리 기준, 문제가 발생한 상황을 적어주세요.')}">${r.answer_text||''}</textarea>
    <div class="grid2">
      ${meta.painRequired?`<div>
        <label>Pain Level</label>
@@ -353,6 +357,7 @@ function renderQuestions(){
    <span class="chip blue">${q.category}</span><span class="chip">${q.question_code}</span><span class="chip">${scope}</span>
    ${meta.painRequired?'<span class="chip purple">Pain</span>':''}${meta.priorityRequired?'<span class="chip purple">Priority</span>':''}
    <h3>${q.question_text}</h3>
+   ${q.placeholder_text?`<p class="muted"><b>Placeholder</b><br>${q.placeholder_text}</p>`:''}
   </div>`
  }).join('')
 }
