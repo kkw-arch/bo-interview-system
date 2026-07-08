@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BO 인터뷰 시스템 · Supabase 저장형</title>
+<title>BO 인터뷰 시스템 · Supabase 저장형 v5</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#6b7280;--primary:#2563eb;--soft:#eff6ff}
@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px
 <body>
 <div class="app">
 <aside class="side">
-<h1>BO 인터뷰 시스템</h1><p>Supabase DB 저장형</p>
+<h1>BO 인터뷰 시스템</h1><p>Supabase DB 저장형 · v5 DB Question Master 기반</p>
 <div class="nav">
 <button class="active" onclick="nav('setup',this)">0. 연결 설정</button>
 <button onclick="nav('dashboard',this)">1. Dashboard</button>
@@ -143,23 +143,16 @@ function getDeptName(interview){
 }
 function getQuestionMeta(q){
  const cat=q.category||'기타';
- let scope=['COMMON'];
- if(['마케팅','퍼널'].includes(cat)) scope=['마케팅팀'];
- if(cat==='협력사') scope=['마케팅팀','정산/재무'];
- if(cat==='체크리스트') scope=['체크리스트 담당','CX지원팀','환급기획운영팀'];
- if(cat==='환급불가/종결/진행재개') scope=['환급기획운영팀','실무 검토','CX지원팀'];
- if(cat==='알림톡') scope=['CX지원팀','고객지원파트','환급기획운영팀'];
- if(cat==='최종 우선순위') scope=['FINAL'];
-
- const painCats=['Airtable','버튼/액션','상태값','체크리스트','환급불가/종결/진행재개','알림톡','BO 우선순위','마케팅','퍼널','협력사','최종 우선순위'];
- const priorityCats=['BO 우선순위','마케팅','퍼널','협력사','최종 우선순위'];
+ const rawScope=q.department_scope||q.scope||['COMMON'];
+ const scope=Array.isArray(rawScope)?rawScope:[String(rawScope||'COMMON')];
 
  return {
   scope,
-  required:true,
-  painRequired:painCats.includes(cat),
-  priorityRequired:priorityCats.includes(cat),
-  section:cat
+  required:q.required !== false,
+  painRequired:q.pain_required === true,
+  priorityRequired:q.priority_required === true,
+  section:q.section_name || cat,
+  questionType:q.question_type || 'TEXT'
  };
 }
 function isQuestionVisibleForInterview(q,interview){
