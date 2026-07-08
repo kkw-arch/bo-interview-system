@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BO 인터뷰 시스템 · Supabase 저장형 v5</title>
+<title>BO 인터뷰 시스템 · Supabase 저장형 v6</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#6b7280;--primary:#2563eb;--soft:#eff6ff}
@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px
 <body>
 <div class="app">
 <aside class="side">
-<h1>BO 인터뷰 시스템</h1><p>Supabase DB 저장형 · v5 DB Question Master 기반</p>
+<h1>BO 인터뷰 시스템</h1><p>Supabase DB 저장형 · v6 개인별/전체집계</p>
 <div class="nav">
 <button class="active" onclick="nav('setup',this)">0. 연결 설정</button>
 <button onclick="nav('dashboard',this)">1. Dashboard</button>
@@ -89,7 +89,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px
 
 <section id="responses" class="hidden">
 <div class="top"><div><h2>응답 결과</h2><p>DB에 저장된 responses 기준으로 확인합니다.</p></div><button class="light" onclick="loadAll()">새로고침</button></div>
-<div class="card"><div class="grid2"><div><label>보기</label><select id="resultView" onchange="renderResponses()"><option value="byQuestion">질문별</option><option value="matrix">표</option></select></div><div><label>검색</label><input id="rSearch" oninput="renderResponses()"/></div></div></div>
+<div class="card"><div class="grid3"><div><label>보기</label><select id="resultView" onchange="renderResponses()"><option value="byUser">사용자별</option><option value="aggregate">전체 집계</option><option value="byQuestion">질문별</option><option value="matrix">전체 표</option></select></div><div><label>부서 필터</label><select id="rDept" onchange="renderResponses()"></select></div><div><label>검색</label><input id="rSearch" oninput="renderResponses()" placeholder="사용자/질문/답변 검색"/></div></div></div>
 <div id="responseArea"></div>
 </section>
 
@@ -356,17 +356,153 @@ function renderQuestions(){
   </div>`
  }).join('')
 }
-function renderResponses(){
- if(!responseArea)return;
+
+function responseRows(){
+ const deptFilter=rDept?.value||'전체';
  const kw=(rSearch?.value||'').trim();
  let rows=[];
- state.interviews.forEach(i=>state.questions.forEach(q=>{const r=getResponse(i.id,q.id);if(r?.answer_text)rows.push({i,q,r})}));
- rows=rows.filter(x=>!kw||(x.i.interviewee_name+x.q.question_text+x.r.answer_text).includes(kw));
- if((resultView?.value||'byQuestion')==='matrix'){
-  responseArea.innerHTML='<div class="card"><table><tr><th>인터뷰</th><th>질문</th><th>답변</th><th>Pain</th><th>Priority</th></tr>'+rows.map(x=>`<tr><td>${x.i.interviewee_name}</td><td>${x.q.question_code}. ${x.q.question_text}</td><td>${x.r.answer_text}</td><td>${x.r.pain_level||''}</td><td>${x.r.importance||''}</td></tr>`).join('')+'</table></div>'
- }else{
-  responseArea.innerHTML=rows.map(x=>`<div class="card"><span class="chip blue">${x.q.category}</span><span class="chip">${x.q.question_code}</span><span class="chip">${x.i.interviewee_name}</span><h3>${x.q.question_text}</h3><p>${x.r.answer_text}</p>${x.r.pain_level?`<span class="chip warn">Pain ${x.r.pain_level}</span>`:''}${x.r.importance?`<span class="chip purple">${x.r.importance}</span>`:''}</div>`).join('')||'<div class="card">저장된 응답이 없습니다.</div>'
- }
+ state.interviews.forEach(i=>{
+  state.questions.forEach(q=>{
+   const r=getResponse(i.id,q.id);
+   if(r?.answer_text){
+    const dept=getDeptName(i)||'미지정';
+    rows.push({i,q,r,dept,category:q.category||'기타'});
+   }
+  })
+ });
+ rows=rows.filter(x=>
+  (deptFilter==='전체'||x.dept===deptFilter) &&
+  (!kw||(x.i.interviewee_name+x.dept+x.q.question_text+x.r.answer_text+(x.category||'')).includes(kw))
+ );
+ return rows;
+}
+
+function renderResponseFilters(){
+ if(!rDept)return;
+ const cur=rDept.value||'전체';
+ const depts=['전체',...new Set(state.interviews.map(i=>getDeptName(i)||'미지정').filter(Boolean))];
+ rDept.innerHTML=depts.map(d=>`<option ${d===cur?'selected':''}>${d}</option>`).join('');
+}
+
+function priorityLabel(v){
+ return v==='P0'?'상(P0)':v==='P1'?'중(P1)':v==='P2'?'하(P2)':(v||'-');
+}
+
+function avg(nums){
+ const arr=nums.map(Number).filter(n=>!Number.isNaN(n)&&n>0);
+ return arr.length?(arr.reduce((a,b)=>a+b,0)/arr.length):0;
+}
+
+function renderAggregate(rows){
+ const answered=rows.length;
+ const users=new Set(rows.map(x=>x.i.id)).size;
+ const categories=[...new Set(rows.map(x=>x.category))];
+ const painRows=rows.filter(x=>x.r.pain_level);
+ const priorityRows=rows.filter(x=>x.r.importance);
+
+ const p0=priorityRows.filter(x=>x.r.importance==='P0').length;
+ const p1=priorityRows.filter(x=>x.r.importance==='P1').length;
+ const p2=priorityRows.filter(x=>x.r.importance==='P2').length;
+ const avgPain=avg(painRows.map(x=>x.r.pain_level));
+
+ const byCategory=categories.map(cat=>{
+  const cr=rows.filter(x=>x.category===cat);
+  const cp=cr.filter(x=>x.r.pain_level);
+  return {
+   category:cat,
+   answerCount:cr.length,
+   userCount:new Set(cr.map(x=>x.i.id)).size,
+   avgPain:avg(cp.map(x=>x.r.pain_level)),
+   p0:cr.filter(x=>x.r.importance==='P0').length,
+   p1:cr.filter(x=>x.r.importance==='P1').length,
+   p2:cr.filter(x=>x.r.importance==='P2').length
+  }
+ }).sort((a,b)=>(b.avgPain-a.avgPain)||(b.p0-a.p0)||(b.answerCount-a.answerCount));
+
+ const byQuestion=state.questions.map(q=>{
+  const qr=rows.filter(x=>x.q.id===q.id);
+  const qp=qr.filter(x=>x.r.pain_level);
+  return {
+   code:q.question_code,
+   category:q.category||'기타',
+   question:q.question_text,
+   count:qr.length,
+   avgPain:avg(qp.map(x=>x.r.pain_level)),
+   p0:qr.filter(x=>x.r.importance==='P0').length,
+   p1:qr.filter(x=>x.r.importance==='P1').length,
+   p2:qr.filter(x=>x.r.importance==='P2').length
+  }
+ }).filter(x=>x.count>0).sort((a,b)=>(b.avgPain-a.avgPain)||(b.p0-a.p0)||(b.count-a.count)).slice(0,20);
+
+ return `
+ <div class="grid4">
+  <div class="card stat"><small>응답자</small><strong>${users}</strong></div>
+  <div class="card stat"><small>전체 응답</small><strong>${answered}</strong></div>
+  <div class="card stat"><small>평균 Pain</small><strong>${avgPain?avgPain.toFixed(1):'-'}</strong></div>
+  <div class="card stat"><small>상 우선순위</small><strong>${p0}</strong></div>
+ </div>
+ <div class="grid3">
+  <div class="card stat"><small>Priority 상(P0)</small><strong>${p0}</strong></div>
+  <div class="card stat"><small>Priority 중(P1)</small><strong>${p1}</strong></div>
+  <div class="card stat"><small>Priority 하(P2)</small><strong>${p2}</strong></div>
+ </div>
+ <div class="card">
+  <h3>카테고리별 집계</h3>
+  <table>
+   <tr><th>카테고리</th><th>응답수</th><th>응답자수</th><th>평균 Pain</th><th>상(P0)</th><th>중(P1)</th><th>하(P2)</th></tr>
+   ${byCategory.map(x=>`<tr><td>${x.category}</td><td>${x.answerCount}</td><td>${x.userCount}</td><td>${x.avgPain?x.avgPain.toFixed(1):'-'}</td><td>${x.p0}</td><td>${x.p1}</td><td>${x.p2}</td></tr>`).join('')}
+  </table>
+ </div>
+ <div class="card">
+  <h3>상위 이슈 질문 TOP 20</h3>
+  <p class="muted">평균 Pain → Priority 상(P0) → 응답수 순으로 정렬됩니다.</p>
+  <table>
+   <tr><th>질문</th><th>카테고리</th><th>응답수</th><th>평균 Pain</th><th>상(P0)</th><th>중(P1)</th><th>하(P2)</th></tr>
+   ${byQuestion.map(x=>`<tr><td><b>${x.code}</b><br>${x.question}</td><td>${x.category}</td><td>${x.count}</td><td>${x.avgPain?x.avgPain.toFixed(1):'-'}</td><td>${x.p0}</td><td>${x.p1}</td><td>${x.p2}</td></tr>`).join('')}
+  </table>
+ </div>`;
+}
+
+function renderByUser(rows){
+ const grouped={};
+ rows.forEach(x=>{
+  const key=x.i.id;
+  if(!grouped[key])grouped[key]={interview:x.i,dept:x.dept,rows:[]};
+  grouped[key].rows.push(x);
+ });
+ const cards=Object.values(grouped).map(g=>{
+  const avgPain=avg(g.rows.filter(x=>x.r.pain_level).map(x=>x.r.pain_level));
+  const p0=g.rows.filter(x=>x.r.importance==='P0').length;
+  return `<div class="card">
+   <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+    <div><h3>${g.interview.interviewee_name}</h3><span class="chip blue">${g.dept}</span><span class="chip">${g.interview.status}</span><span class="chip">응답 ${g.rows.length}</span><span class="chip warn">평균 Pain ${avgPain?avgPain.toFixed(1):'-'}</span><span class="chip purple">상(P0) ${p0}</span></div>
+   </div>
+   <table style="margin-top:12px">
+    <tr><th>질문</th><th>답변</th><th>Pain</th><th>Priority</th></tr>
+    ${g.rows.map(x=>`<tr><td><b>${x.q.question_code}</b><br>${x.q.question_text}</td><td>${x.r.answer_text}</td><td>${x.r.pain_level||''}</td><td>${priorityLabel(x.r.importance)}</td></tr>`).join('')}
+   </table>
+  </div>`
+ }).join('');
+ return cards || '<div class="card">저장된 응답이 없습니다.</div>';
+}
+
+function renderByQuestion(rows){
+ return rows.map(x=>`<div class="card"><span class="chip blue">${x.category}</span><span class="chip">${x.q.question_code}</span><span class="chip">${x.i.interviewee_name}</span><span class="chip">${x.dept}</span><h3>${x.q.question_text}</h3><p>${x.r.answer_text}</p>${x.r.pain_level?`<span class="chip warn">Pain ${x.r.pain_level}</span>`:''}${x.r.importance?`<span class="chip purple">${priorityLabel(x.r.importance)}</span>`:''}</div>`).join('')||'<div class="card">저장된 응답이 없습니다.</div>';
+}
+
+function renderMatrix(rows){
+ return '<div class="card"><table><tr><th>인터뷰</th><th>부서</th><th>카테고리</th><th>질문</th><th>답변</th><th>Pain</th><th>Priority</th></tr>'+rows.map(x=>`<tr><td>${x.i.interviewee_name}</td><td>${x.dept}</td><td>${x.category}</td><td>${x.q.question_code}. ${x.q.question_text}</td><td>${x.r.answer_text}</td><td>${x.r.pain_level||''}</td><td>${priorityLabel(x.r.importance)}</td></tr>`).join('')+'</table></div>';
+}
+
+function renderResponses(){
+ if(!responseArea)return;
+ renderResponseFilters();
+ const rows=responseRows();
+ const view=resultView?.value||'byUser';
+ if(view==='aggregate') responseArea.innerHTML=renderAggregate(rows);
+ else if(view==='matrix') responseArea.innerHTML=renderMatrix(rows);
+ else if(view==='byQuestion') responseArea.innerHTML=renderByQuestion(rows);
+ else responseArea.innerHTML=renderByUser(rows);
 }
 function renderReq(){if(!reqTable)return;reqTable.innerHTML='<tr><th>우선순위</th><th>제목</th><th>상태</th><th>부서</th></tr>'+state.requirements.map(r=>`<tr><td>${r.priority}</td><td>${r.title}</td><td>${r.status}</td><td>${r.departments?.name||''}</td></tr>`).join('')}
 async function newRequirement(){client();const title=prompt('요구사항명');if(!title)return;const {error}=await sb.from('requirements').insert({title,priority:'P1',status:'초안'});if(error){toast(error.message);return}toast('요구사항 추가 완료');await loadAll()}
