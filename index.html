@@ -18,7 +18,7 @@ input,select,textarea{width:100%;border:1px solid var(--line);border-radius:12px
 .item{border:1px solid var(--line);border-radius:14px;padding:13px;background:white;cursor:pointer;margin-bottom:9px}.item.active,.item:hover{border-color:var(--primary);background:var(--soft)}
 .chip{display:inline-block;border-radius:999px;padding:5px 9px;background:#f3f4f6;color:#374151;font-size:12px;font-weight:900;margin:2px}.blue{background:#eff6ff;color:#1d4ed8}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.red{background:#fee2e2;color:#991b1b}.purple{background:#ede9fe;color:#5b21b6}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}th{background:#f9fafb}
-.qbox{border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px}.qid{font-size:12px;color:var(--muted);font-weight:900}.qtitle{font-weight:900;margin:5px 0 10px}.muted{color:var(--muted)}
+.qbox{border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px}.qid{font-size:12px;color:var(--muted);font-weight:900}.qtitle{font-weight:900;margin:5px 0 10px}.muted{color:var(--muted)}.field-error{border-color:#dc2626!important;background:#fff7f7}.error-text{color:#dc2626;font-size:13px;font-weight:800;margin-top:8px}.meta-row{margin:8px 0 10px}.section-actions{position:sticky;bottom:14px;background:white;border:1px solid #e5e7eb;border-radius:16px;padding:14px;margin-top:18px;box-shadow:0 10px 24px rgba(15,23,42,.12);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.section-actions .right{display:flex;gap:8px;flex-wrap:wrap}
 .stat small{color:var(--muted);font-weight:800}.stat strong{display:block;font-size:30px;margin-top:8px}.bar{height:9px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:8px}.bar span{display:block;height:100%;background:#2563eb;width:0}
 .likert{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.scale-btn{width:42px;height:42px;border-radius:999px;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:900;display:grid;place-items:center;padding:0}.scale-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 .scale-label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;max-width:250px;margin-top:6px}.radio-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.radio-pill{position:relative;border:1px solid #d1d5db;border-radius:999px;padding:10px 14px;background:white;cursor:pointer;font-weight:900;min-width:74px;text-align:center}.radio-pill input{position:absolute;opacity:0}.radio-pill.active{background:#111827;color:white;border-color:#111827}
@@ -63,7 +63,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px
 </section>
 
 <section id="interview" class="hidden">
-<div class="top"><div><h2>Interview</h2><p>섹션별로 질문을 입력하고 Supabase responses 테이블에 저장합니다.</p></div><div><button class="primary" onclick="newInterview()">인터뷰 추가</button> <button class="green" onclick="saveSection()">섹션 저장</button></div></div>
+<div class="top"><div><h2>Interview</h2><p>섹션별로 질문을 입력하고 Supabase responses 테이블에 저장합니다.</p></div><div><button class="primary" onclick="newInterview()">인터뷰 추가</button></div></div>
 <div class="layout">
 <div class="card"><h3>인터뷰 대상</h3><div id="interviewList"></div></div>
 <div>
@@ -75,7 +75,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px
 <label>인터뷰일</label><input id="ivDate" type="date"/>
 </div>
 </div>
-<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><b id="sectionTitle">섹션</b><div><button class="light" onclick="prevSection()">이전 섹션</button> <button class="green" onclick="saveSection()">섹션 저장</button> <button class="primary" onclick="nextSection()">다음 섹션</button></div></div><div class="bar"><span id="sectionBar"></span></div></div>
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><b id="sectionTitle">섹션</b><span class="chip blue">하단 버튼으로 저장/이동</span></div><div class="bar"><span id="sectionBar"></span></div></div>
 <div id="questionArea"></div>
 </div>
 </div>
@@ -137,39 +137,243 @@ function renderDashboard(){
 }
 function renderInterviewList(){if(!interviewList)return;interviewList.innerHTML=state.interviews.map(i=>`<div class="item ${i.id===selectedInterview?'active':''}" onclick="selectedInterview='${i.id}';currentSection=0;render()"><b>${i.interviewee_name}</b><br><span class="chip blue">${i.departments?.name||''}</span><span class="chip">${i.status}</span></div>`).join('')}
 function renderInterviewForm(){const i=state.interviews.find(x=>x.id===selectedInterview);if(!i){ivForm.classList.add('hidden');return}ivForm.classList.remove('hidden');ivTitle.textContent=i.interviewee_name;ivName.value=i.interviewee_name||'';ivRole.value=i.interviewee_role||'';ivOwner.value=i.interviewer||'';ivStatus.value=i.status||'예정';ivDate.value=i.interview_date||'';ivDept.innerHTML=state.departments.map(d=>`<option value="${d.id}" ${d.id===i.department_id?'selected':''}>${d.name}</option>`).join('')}
-function sections(){return [...new Set(state.questions.map(q=>q.category))].map(c=>({category:c,questions:state.questions.filter(q=>q.category===c)}))}
+
+function getDeptName(interview){
+ return interview?.departments?.name || state.departments.find(d=>d.id===interview?.department_id)?.name || '';
+}
+function getQuestionMeta(q){
+ const cat=q.category||'기타';
+ let scope=['COMMON'];
+ if(['마케팅','퍼널'].includes(cat)) scope=['마케팅팀'];
+ if(cat==='협력사') scope=['마케팅팀','정산/재무'];
+ if(cat==='체크리스트') scope=['체크리스트 담당','CX지원팀','환급기획운영팀'];
+ if(cat==='환급불가/종결/진행재개') scope=['환급기획운영팀','실무 검토','CX지원팀'];
+ if(cat==='알림톡') scope=['CX지원팀','고객지원파트','환급기획운영팀'];
+ if(cat==='최종 우선순위') scope=['FINAL'];
+
+ const painCats=['Airtable','버튼/액션','상태값','체크리스트','환급불가/종결/진행재개','알림톡','BO 우선순위','마케팅','퍼널','협력사','최종 우선순위'];
+ const priorityCats=['BO 우선순위','마케팅','퍼널','협력사','최종 우선순위'];
+
+ return {
+  scope,
+  required:true,
+  painRequired:painCats.includes(cat),
+  priorityRequired:priorityCats.includes(cat),
+  section:cat
+ };
+}
+function isQuestionVisibleForInterview(q,interview){
+ const meta=getQuestionMeta(q);
+ const dept=getDeptName(interview);
+ return meta.scope.includes('COMMON') || meta.scope.includes('FINAL') || meta.scope.includes(dept);
+}
+function visibleQuestions(){
+ const interview=state.interviews.find(x=>x.id===selectedInterview);
+ if(!interview)return [];
+ return state.questions.filter(q=>isQuestionVisibleForInterview(q,interview));
+}
+function sections(){
+ const qs=visibleQuestions();
+ return [...new Set(qs.map(q=>getQuestionMeta(q).section))].map(c=>({category:c,questions:qs.filter(q=>getQuestionMeta(q).section===c)}));
+}
 function renderSection(){
  if(!questionArea)return;
- const i=state.interviews.find(x=>x.id===selectedInterview); if(!i){questionArea.innerHTML='<div class="card">인터뷰 대상을 선택하세요.</div>';return}
- const secs=sections(); if(currentSection>=secs.length)currentSection=secs.length-1;if(currentSection<0)currentSection=0;const sec=secs[currentSection]; if(!sec){questionArea.innerHTML='<div class="card">질문이 없습니다.</div>';return}
+ const i=state.interviews.find(x=>x.id===selectedInterview);
+ if(!i){questionArea.innerHTML='<div class="card">인터뷰 대상을 선택하세요.</div>';return}
+ const secs=sections();
+ if(currentSection>=secs.length)currentSection=secs.length-1;
+ if(currentSection<0)currentSection=0;
+ const sec=secs[currentSection];
+ if(!sec){questionArea.innerHTML='<div class="card">현재 부서에 노출할 질문이 없습니다.</div>';return}
  const done=sec.questions.filter(q=>getResponse(i.id,q.id)?.answer_text?.trim()).length;
  sectionTitle.innerHTML=`<span class="chip blue">섹션 ${currentSection+1}/${secs.length}</span> ${sec.category} <span class="chip">${done}/${sec.questions.length}</span>`;
  sectionBar.style.width=(sec.questions.length?done/sec.questions.length*100:0)+'%';
- questionArea.innerHTML=sec.questions.map(q=>qHtml(i.id,q)).join('');
+ const isLast=currentSection===secs.length-1;
+ questionArea.innerHTML=
+  sec.questions.map(q=>qHtml(i.id,q)).join('')+
+  `<div class="section-actions">
+    <div>
+      <span class="chip blue">섹션 ${currentSection+1}/${secs.length}</span>
+      <span class="chip">${sec.category}</span>
+    </div>
+    <div class="right">
+      <button class="light" onclick="prevSection()">이전 섹션</button>
+      <button class="green" onclick="saveSection()">섹션 저장</button>
+      <button class="primary" onclick="${isLast?'submitInterview()':'nextSection()'}">${isLast?'제출완료':'다음 섹션'}</button>
+    </div>
+  </div>`;
 }
 function getResponse(interviewId,questionId){return state.responses.find(r=>r.interview_id===interviewId&&r.question_id===questionId)}
-function qHtml(interviewId,q){const r=getResponse(interviewId,q.id)||{};const pain=[1,2,3,4,5].map(n=>`<button type="button" class="scale-btn ${String(r.pain_level||'')===String(n)?'active':''}" data-pain-btn="${q.id}" data-value="${n}" onclick="setPain('${q.id}','${n}')">${n}</button>`).join('');const pri=[['P0','상'],['P1','중'],['P2','하']].map(([v,l])=>`<label class="radio-pill ${r.importance===v?'active':''}" data-priority-pill="${q.id}" data-value="${v}"><input type="radio" name="priority-${q.id}" ${r.importance===v?'checked':''} onchange="setPriority('${q.id}','${v}')">${l}</label>`).join('');
-return `<div class="qbox"><div class="qid">${q.question_code} · ${q.category}</div><div class="qtitle">${q.question_text}</div><textarea data-answer="${q.id}">${r.answer_text||''}</textarea><div class="grid2"><div><label>Pain Level</label><div class="likert" data-pain="${q.id}" data-value="${r.pain_level||''}">${pain}</div><div class="scale-label"><span>낮음</span><span>높음</span></div></div><div><label>Priority</label><div class="radio-group" data-priority="${q.id}" data-value="${r.importance||''}">${pri}</div><div class="scale-label"><span>상=P0</span><span>중=P1</span><span>하=P2</span></div></div></div></div>`}
-function setPain(id,value){const w=document.querySelector(`[data-pain="${id}"]`);if(!w)return;w.dataset.value=value;w.querySelectorAll('.scale-btn').forEach(b=>b.classList.toggle('active',b.dataset.value===value))}
-function setPriority(id,value){const w=document.querySelector(`[data-priority="${id}"]`);if(!w)return;w.dataset.value=value;w.querySelectorAll('.radio-pill').forEach(p=>p.classList.toggle('active',p.dataset.value===value))}
+function qHtml(interviewId,q){
+ const r=getResponse(interviewId,q.id)||{};
+ const meta=getQuestionMeta(q);
+ const scopeLabel=meta.scope.includes('COMMON')?'공통':meta.scope.includes('FINAL')?'마무리':meta.scope.join(', ');
+ const pain=[1,2,3,4,5].map(n=>`<button type="button" class="scale-btn ${String(r.pain_level||'')===String(n)?'active':''}" data-pain-btn="${q.id}" data-value="${n}" onclick="setPain('${q.id}','${n}')">${n}</button>`).join('');
+ const pri=[['P0','상'],['P1','중'],['P2','하']].map(([v,l])=>`<label class="radio-pill ${r.importance===v?'active':''}" data-priority-pill="${q.id}" data-value="${v}"><input type="radio" name="priority-${q.id}" ${r.importance===v?'checked':''} onchange="setPriority('${q.id}','${v}')">${l}</label>`).join('');
+ return `<div class="qbox" data-qbox="${q.id}">
+   <div class="qid">${q.question_code} · ${q.category}</div>
+   <div class="meta-row">
+     <span class="chip blue">${scopeLabel}</span>
+     <span class="chip warn">필수</span>
+     ${meta.painRequired?'<span class="chip purple">Pain 필요</span>':''}
+     ${meta.priorityRequired?'<span class="chip purple">Priority 필요</span>':''}
+   </div>
+   <div class="qtitle">${q.question_text}</div>
+   <textarea data-answer="${q.id}" data-required="${meta.required}">${r.answer_text||''}</textarea>
+   <div class="grid2">
+     ${meta.painRequired?`<div>
+       <label>Pain Level</label>
+       <div class="likert" data-pain="${q.id}" data-value="${r.pain_level||''}">${pain}</div>
+       <div class="scale-label"><span>낮음</span><span>높음</span></div>
+     </div>`:''}
+     ${meta.priorityRequired?`<div>
+       <label>Priority</label>
+       <div class="radio-group" data-priority="${q.id}" data-value="${r.importance||''}">${pri}</div>
+       <div class="scale-label"><span>상=P0</span><span>중=P1</span><span>하=P2</span></div>
+     </div>`:''}
+   </div>
+   <div class="error-text hidden" data-error="${q.id}"></div>
+ </div>`
+}
+function setPain(id,value){
+ const w=document.querySelector(`[data-pain="${id}"]`);
+ if(!w)return;
+ w.dataset.value=value;
+ w.querySelectorAll('.scale-btn').forEach(b=>b.classList.toggle('active',b.dataset.value===value));
+ const err=document.querySelector(`[data-error="${id}"]`);
+ if(err){err.classList.add('hidden');err.textContent=''}
+}
+function setPriority(id,value){
+ const w=document.querySelector(`[data-priority="${id}"]`);
+ if(!w)return;
+ w.dataset.value=value;
+ w.querySelectorAll('.radio-pill').forEach(p=>p.classList.toggle('active',p.dataset.value===value));
+ const err=document.querySelector(`[data-error="${id}"]`);
+ if(err){err.classList.add('hidden');err.textContent=''}
+}
+function validateCurrentSection(){
+ let ok=true;
+ document.querySelectorAll('.field-error').forEach(el=>el.classList.remove('field-error'));
+ document.querySelectorAll('[data-error]').forEach(el=>{el.classList.add('hidden');el.textContent=''});
+ const secs=sections();
+ const sec=secs[currentSection];
+ if(!sec)return true;
+ for(const q of sec.questions){
+  const meta=getQuestionMeta(q);
+  const textarea=document.querySelector(`textarea[data-answer="${q.id}"]`);
+  const answer=(textarea?.value||'').trim();
+  const painValue=document.querySelector(`[data-pain="${q.id}"]`)?.dataset.value||'';
+  const priorityValue=document.querySelector(`[data-priority="${q.id}"]`)?.dataset.value||'';
+  const err=document.querySelector(`[data-error="${q.id}"]`);
+  const messages=[];
+  if(meta.required && !answer){
+   messages.push('답변을 입력해주세요.');
+   textarea?.classList.add('field-error');
+  }
+  if(meta.painRequired && !painValue)messages.push('Pain Level을 선택해주세요.');
+  if(meta.priorityRequired && !priorityValue)messages.push('Priority를 선택해주세요.');
+  if(messages.length){
+   ok=false;
+   if(err){err.textContent=messages.join(' ');err.classList.remove('hidden')}
+  }
+ }
+ if(!ok) toast('필수 항목을 모두 입력해야 다음으로 이동할 수 있습니다.');
+ return ok;
+}
 async function saveInterviewMeta(){
  const i=state.interviews.find(x=>x.id===selectedInterview); if(!i)return false;
  const payload={interviewee_name:ivName.value,department_id:ivDept.value,interviewee_role:ivRole.value,interviewer:ivOwner.value,status:ivStatus.value,interview_date:ivDate.value||null};
  const {error}=await sb.from('interviews').update(payload).eq('id',i.id); if(error){toast(error.message);return false} return true;
 }
 async function saveSection(){
- client(); if(!sb){toast('Supabase 연결 필요');return}
- const i=state.interviews.find(x=>x.id===selectedInterview); if(!i){toast('인터뷰 대상 선택 필요');return}
- const metaOk=await saveInterviewMeta(); if(!metaOk)return;
- const rows=[...document.querySelectorAll('textarea[data-answer]')].map(t=>({interview_id:i.id,question_id:t.dataset.answer,answer_text:t.value,pain_level:document.querySelector(`[data-pain="${t.dataset.answer}"]`)?.dataset.value||null,importance:document.querySelector(`[data-priority="${t.dataset.answer}"]`)?.dataset.value||null}));
- const {error}=await sb.from('responses').upsert(rows,{onConflict:'interview_id,question_id'}); if(error){toast(error.message);return}
- toast('섹션 저장 완료'); await loadAll();
+ client(); if(!sb){toast('Supabase 연결 필요');return false}
+ const i=state.interviews.find(x=>x.id===selectedInterview); if(!i){toast('인터뷰 대상 선택 필요');return false}
+ if(!validateCurrentSection())return false;
+ const metaOk=await saveInterviewMeta(); if(!metaOk)return false;
+ const rows=[...document.querySelectorAll('textarea[data-answer]')].map(t=>{
+  const qid=t.dataset.answer;
+  return {
+   interview_id:i.id,
+   question_id:qid,
+   answer_text:t.value,
+   pain_level:document.querySelector(`[data-pain="${qid}"]`)?.dataset.value||null,
+   importance:document.querySelector(`[data-priority="${qid}"]`)?.dataset.value||null
+  }
+ });
+ const {error}=await sb.from('responses').upsert(rows,{onConflict:'interview_id,question_id'}); if(error){toast(error.message);return false}
+ toast('섹션 저장 완료'); await loadAll(); return true;
 }
-function nextSection(){saveSection().then(()=>{const secs=sections();if(currentSection<secs.length-1)currentSection++;renderSection()})}
-function prevSection(){saveSection().then(()=>{if(currentSection>0)currentSection--;renderSection()})}
-async function newInterview(){client();const name=prompt('인터뷰 대상명');if(!name)return;const dept=state.departments[0]?.id||null;const {data,error}=await sb.from('interviews').insert({interviewee_name:name,department_id:dept,status:'예정'}).select().single();if(error){toast(error.message);return}selectedInterview=data.id;currentSection=0;await loadAll()}
-function renderQuestions(){if(!qCat)return;const cats=['전체',...new Set(state.questions.map(q=>q.category))];const cur=qCat.value||'전체';qCat.innerHTML=cats.map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');const kw=(qSearch.value||'').trim();const cat=qCat.value||'전체';const qs=state.questions.filter(q=>(cat==='전체'||q.category===cat)&&(!kw||(q.question_text+q.question_code+q.category).includes(kw)));questionList.innerHTML=qs.map(q=>`<div class="card"><span class="chip blue">${q.category}</span><span class="chip">${q.question_code}</span><h3>${q.question_text}</h3></div>`).join('')}
-function renderResponses(){if(!responseArea)return;const kw=(rSearch?.value||'').trim();let rows=[];state.interviews.forEach(i=>state.questions.forEach(q=>{const r=getResponse(i.id,q.id);if(r?.answer_text)rows.push({i,q,r})}));rows=rows.filter(x=>!kw||(x.i.interviewee_name+x.q.question_text+x.r.answer_text).includes(kw));if((resultView?.value||'byQuestion')==='matrix'){responseArea.innerHTML='<div class="card"><table><tr><th>인터뷰</th><th>질문</th><th>답변</th><th>Pain</th><th>Priority</th></tr>'+rows.map(x=>`<tr><td>${x.i.interviewee_name}</td><td>${x.q.question_code}. ${x.q.question_text}</td><td>${x.r.answer_text}</td><td>${x.r.pain_level||''}</td><td>${x.r.importance||''}</td></tr>`).join('')+'</table></div>'}else{responseArea.innerHTML=rows.map(x=>`<div class="card"><span class="chip blue">${x.q.category}</span><span class="chip">${x.q.question_code}</span><span class="chip">${x.i.interviewee_name}</span><h3>${x.q.question_text}</h3><p>${x.r.answer_text}</p><span class="chip warn">Pain ${x.r.pain_level||'-'}</span><span class="chip purple">${x.r.importance||'-'}</span></div>`).join('')||'<div class="card">저장된 응답이 없습니다.</div>'}
+async function nextSection(){
+ const saved=await saveSection();
+ if(!saved)return;
+ const secs=sections();
+ if(currentSection<secs.length-1)currentSection++;
+ renderSection();
+}
+function saveVisibleDraft(){
+ document.querySelectorAll('textarea[data-answer]').forEach(t=>{
+  const qid=t.dataset.answer;
+  const existing=getResponse(selectedInterview,qid);
+  if(existing){
+   existing.answer_text=t.value;
+   existing.pain_level=document.querySelector(`[data-pain="${qid}"]`)?.dataset.value||existing.pain_level||null;
+   existing.importance=document.querySelector(`[data-priority="${qid}"]`)?.dataset.value||existing.importance||null;
+  }
+ });
+}
+function prevSection(){
+ saveVisibleDraft();
+ if(currentSection>0)currentSection--;
+ renderSection();
+}
+async function submitInterview(){
+ const saved=await saveSection();
+ if(!saved)return;
+ const i=state.interviews.find(x=>x.id===selectedInterview);
+ if(i){
+  const {error}=await sb.from('interviews').update({status:'완료'}).eq('id',i.id);
+  if(error){toast(error.message);return}
+ }
+ toast('제출이 완료되었습니다.');
+ await loadAll();
+}
+async function newInterview(){
+ client();
+ const name=prompt('인터뷰 대상명'); if(!name)return;
+ const dept=state.departments[0]?.id||null;
+ const {data,error}=await sb.from('interviews').insert({interviewee_name:name,department_id:dept,status:'예정'}).select().single();
+ if(error){toast(error.message);return}
+ selectedInterview=data.id;currentSection=0;await loadAll();
+}
+function renderQuestions(){
+ if(!qCat)return;
+ const cats=['전체',...new Set(state.questions.map(q=>q.category))];
+ const cur=qCat.value||'전체';
+ qCat.innerHTML=cats.map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');
+ const kw=(qSearch.value||'').trim();
+ const cat=qCat.value||'전체';
+ const qs=state.questions.filter(q=>(cat==='전체'||q.category===cat)&&(!kw||(q.question_text+q.question_code+q.category).includes(kw)));
+ questionList.innerHTML=qs.map(q=>{
+  const meta=getQuestionMeta(q);
+  const scope=meta.scope.includes('COMMON')?'공통':meta.scope.includes('FINAL')?'마무리':meta.scope.join(', ');
+  return `<div class="card">
+   <span class="chip blue">${q.category}</span><span class="chip">${q.question_code}</span><span class="chip">${scope}</span>
+   ${meta.painRequired?'<span class="chip purple">Pain</span>':''}${meta.priorityRequired?'<span class="chip purple">Priority</span>':''}
+   <h3>${q.question_text}</h3>
+  </div>`
+ }).join('')
+}
+function renderResponses(){
+ if(!responseArea)return;
+ const kw=(rSearch?.value||'').trim();
+ let rows=[];
+ state.interviews.forEach(i=>state.questions.forEach(q=>{const r=getResponse(i.id,q.id);if(r?.answer_text)rows.push({i,q,r})}));
+ rows=rows.filter(x=>!kw||(x.i.interviewee_name+x.q.question_text+x.r.answer_text).includes(kw));
+ if((resultView?.value||'byQuestion')==='matrix'){
+  responseArea.innerHTML='<div class="card"><table><tr><th>인터뷰</th><th>질문</th><th>답변</th><th>Pain</th><th>Priority</th></tr>'+rows.map(x=>`<tr><td>${x.i.interviewee_name}</td><td>${x.q.question_code}. ${x.q.question_text}</td><td>${x.r.answer_text}</td><td>${x.r.pain_level||''}</td><td>${x.r.importance||''}</td></tr>`).join('')+'</table></div>'
+ }else{
+  responseArea.innerHTML=rows.map(x=>`<div class="card"><span class="chip blue">${x.q.category}</span><span class="chip">${x.q.question_code}</span><span class="chip">${x.i.interviewee_name}</span><h3>${x.q.question_text}</h3><p>${x.r.answer_text}</p>${x.r.pain_level?`<span class="chip warn">Pain ${x.r.pain_level}</span>`:''}${x.r.importance?`<span class="chip purple">${x.r.importance}</span>`:''}</div>`).join('')||'<div class="card">저장된 응답이 없습니다.</div>'
+ }
 }
 function renderReq(){if(!reqTable)return;reqTable.innerHTML='<tr><th>우선순위</th><th>제목</th><th>상태</th><th>부서</th></tr>'+state.requirements.map(r=>`<tr><td>${r.priority}</td><td>${r.title}</td><td>${r.status}</td><td>${r.departments?.name||''}</td></tr>`).join('')}
 async function newRequirement(){client();const title=prompt('요구사항명');if(!title)return;const {error}=await sb.from('requirements').insert({title,priority:'P1',status:'초안'});if(error){toast(error.message);return}toast('요구사항 추가 완료');await loadAll()}
