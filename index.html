@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BO 인터뷰 시스템 · Supabase 저장형</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--line:#e5e7eb;--text:#111827;--muted:#6b7280;--primary:#2563eb;--soft:#eff6ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;color:var(--text)}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}.side{background:#0f172a;color:white;padding:22px;position:sticky;top:0;height:100vh}
+.side h1{font-size:18px;margin:0}.side p{font-size:12px;color:#cbd5e1;margin:5px 0 22px}.nav button{display:block;width:100%;border:0;border-radius:12px;padding:12px;margin:5px 0;background:transparent;color:#cbd5e1;text-align:left;font-weight:800;cursor:pointer}.nav button.active,.nav button:hover{background:#1e293b;color:white}
+main{padding:26px}.hidden{display:none}.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:16px}.top h2{margin:0;font-size:26px}.top p{margin:8px 0 0;color:var(--muted)}
+.card{background:white;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.layout{display:grid;grid-template-columns:300px 1fr;gap:16px}
+button{border:0;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer}.primary{background:#2563eb;color:#fff}.light{background:white;border:1px solid var(--line)}.green{background:#dcfce7;color:#166534}.danger{background:#fee2e2;color:#991b1b}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;font-size:14px;background:white}textarea{min-height:110px;resize:vertical}label{display:block;font-weight:900;margin:12px 0 6px}
+.item{border:1px solid var(--line);border-radius:14px;padding:13px;background:white;cursor:pointer;margin-bottom:9px}.item.active,.item:hover{border-color:var(--primary);background:var(--soft)}
+.chip{display:inline-block;border-radius:999px;padding:5px 9px;background:#f3f4f6;color:#374151;font-size:12px;font-weight:900;margin:2px}.blue{background:#eff6ff;color:#1d4ed8}.ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.red{background:#fee2e2;color:#991b1b}.purple{background:#ede9fe;color:#5b21b6}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}th{background:#f9fafb}
+.qbox{border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px}.qid{font-size:12px;color:var(--muted);font-weight:900}.qtitle{font-weight:900;margin:5px 0 10px}.muted{color:var(--muted)}
+.stat small{color:var(--muted);font-weight:800}.stat strong{display:block;font-size:30px;margin-top:8px}.bar{height:9px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:8px}.bar span{display:block;height:100%;background:#2563eb;width:0}
+.likert{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.scale-btn{width:42px;height:42px;border-radius:999px;border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:900;display:grid;place-items:center;padding:0}.scale-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
+.scale-label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;max-width:250px;margin-top:6px}.radio-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.radio-pill{position:relative;border:1px solid #d1d5db;border-radius:999px;padding:10px 14px;background:white;cursor:pointer;font-weight:900;min-width:74px;text-align:center}.radio-pill input{position:absolute;opacity:0}.radio-pill.active{background:#111827;color:white;border-color:#111827}
+.toast{position:fixed;right:20px;bottom:20px;background:#111827;color:white;border-radius:14px;padding:13px 16px;display:none;z-index:99}
+@media(max-width:1000px){.app,.layout,.grid2,.grid3,.grid4{grid-template-columns:1fr}.side{height:auto;position:relative}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+<h1>BO 인터뷰 시스템</h1><p>Supabase DB 저장형</p>
+<div class="nav">
+<button class="active" onclick="nav('setup',this)">0. 연결 설정</button>
+<button onclick="nav('dashboard',this)">1. Dashboard</button>
+<button onclick="nav('interview',this)">2. Interview</button>
+<button onclick="nav('questions',this)">3. 질문 리스트</button>
+<button onclick="nav('responses',this)">4. 응답 결과</button>
+<button onclick="nav('requirements',this)">5. Requirements</button>
+<button onclick="nav('export',this)">6. Export</button>
+</div>
+</aside>
+<main>
+<section id="setup">
+<div class="top"><div><h2>Supabase 연결 설정</h2><p>Publishable key만 입력하세요. Secret key는 사용하지 않습니다.</p></div></div>
+<div class="card">
+<label>Project URL</label><input id="sbUrl" value="https://mvnmxmnomqpetmbgilue.supabase.co"/>
+<label>Publishable Key</label><input id="sbKey" placeholder="sb_publishable_..."/>
+<div style="margin-top:14px"><button class="primary" onclick="saveConfig()">연결값 저장</button> <button class="light" onclick="testConnection()">연결 테스트</button></div>
+<p id="connStatus" class="chip blue">대기</p>
+</div>
+</section>
+
+<section id="dashboard" class="hidden">
+<div class="top"><div><h2>Dashboard</h2><p>DB 기준 인터뷰 진행 현황입니다.</p></div><button class="light" onclick="loadAll()">새로고침</button></div>
+<div class="grid4">
+<div class="card stat"><small>인터뷰</small><strong id="mInterviews">0</strong></div>
+<div class="card stat"><small>완료</small><strong id="mDone">0</strong></div>
+<div class="card stat"><small>평균 응답률</small><strong id="mRate">0%</strong><div class="bar"><span id="mRateBar"></span></div></div>
+<div class="card stat"><small>요구사항</small><strong id="mReq">0</strong></div>
+</div>
+<div class="card"><h3>인터뷰 진행 현황</h3><table id="progressTable"></table></div>
+</section>
+
+<section id="interview" class="hidden">
+<div class="top"><div><h2>Interview</h2><p>섹션별로 질문을 입력하고 Supabase responses 테이블에 저장합니다.</p></div><div><button class="primary" onclick="newInterview()">인터뷰 추가</button> <button class="green" onclick="saveSection()">섹션 저장</button></div></div>
+<div class="layout">
+<div class="card"><h3>인터뷰 대상</h3><div id="interviewList"></div></div>
+<div>
+<div class="card">
+<h3 id="ivTitle">대상을 선택하세요</h3>
+<div id="ivForm" class="hidden">
+<div class="grid2"><div><label>인터뷰 대상명</label><input id="ivName"/></div><div><label>부서</label><select id="ivDept"></select></div></div>
+<div class="grid3"><div><label>담당업무</label><input id="ivRole"/></div><div><label>인터뷰어</label><input id="ivOwner"/></div><div><label>상태</label><select id="ivStatus"><option>예정</option><option>진행중</option><option>완료</option><option>보류</option></select></div></div>
+<label>인터뷰일</label><input id="ivDate" type="date"/>
+</div>
+</div>
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><b id="sectionTitle">섹션</b><div><button class="light" onclick="prevSection()">이전 섹션</button> <button class="green" onclick="saveSection()">섹션 저장</button> <button class="primary" onclick="nextSection()">다음 섹션</button></div></div><div class="bar"><span id="sectionBar"></span></div></div>
+<div id="questionArea"></div>
+</div>
+</div>
+</section>
+
+<section id="questions" class="hidden">
+<div class="top"><div><h2>질문 리스트</h2><p>Supabase questions 테이블 기준 질문입니다.</p></div><button class="light" onclick="loadAll()">새로고침</button></div>
+<div class="card"><div class="grid2"><div><label>검색</label><input id="qSearch" oninput="renderQuestions()" placeholder="질문/코드/카테고리"/></div><div><label>카테고리</label><select id="qCat" onchange="renderQuestions()"></select></div></div></div>
+<div id="questionList"></div>
+</section>
+
+<section id="responses" class="hidden">
+<div class="top"><div><h2>응답 결과</h2><p>DB에 저장된 responses 기준으로 확인합니다.</p></div><button class="light" onclick="loadAll()">새로고침</button></div>
+<div class="card"><div class="grid2"><div><label>보기</label><select id="resultView" onchange="renderResponses()"><option value="byQuestion">질문별</option><option value="matrix">표</option></select></div><div><label>검색</label><input id="rSearch" oninput="renderResponses()"/></div></div></div>
+<div id="responseArea"></div>
+</section>
+
+<section id="requirements" class="hidden">
+<div class="top"><div><h2>Requirements</h2><p>BO 이관 요구사항을 DB에 저장합니다.</p></div><button class="primary" onclick="newRequirement()">요구사항 추가</button></div>
+<div class="card"><table id="reqTable"></table></div>
+</section>
+
+<section id="export" class="hidden">
+<div class="top"><div><h2>Export</h2><p>DB 데이터를 다운로드합니다.</p></div></div>
+<div class="card"><button class="primary" onclick="downloadCSV()">응답 CSV</button> <button class="light" onclick="downloadJSON()">전체 JSON</button></div>
+</section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+let sb=null, selectedInterview=null, currentSection=0;
+let state={departments:[],interviews:[],questions:[],responses:[],requirements:[],progress:[]};
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',1700)}
+function nav(id,btn){document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render()}
+function client(){let u=localStorage.getItem('sb_url')||sbUrl.value;let k=localStorage.getItem('sb_key')||sbKey.value;if(!u||!k)return null;sb=window.supabase.createClient(u.replace('/rest/v1','').replace(/\/$/,''),k);return sb}
+function saveConfig(){localStorage.setItem('sb_url',sbUrl.value.replace('/rest/v1','').replace(/\/$/,''));localStorage.setItem('sb_key',sbKey.value);client();toast('연결값 저장 완료')}
+async function testConnection(){client();if(!sb){toast('URL/Key 입력 필요');return}let {error}=await sb.from('departments').select('id').limit(1);connStatus.textContent=error?'연결 실패: '+error.message:'연결 성공';connStatus.className=error?'chip red':'chip ok';if(!error)await loadAll()}
+async function loadAll(){
+ client(); if(!sb){toast('연결값을 먼저 입력하세요');return}
+ const [d,i,q,r,req,p]=await Promise.all([
+  sb.from('departments').select('*').order('sort_order'),
+  sb.from('interviews').select('*, departments(name)').order('created_at',{ascending:false}),
+  sb.from('questions').select('*, question_categories(name)').eq('is_active',true).order('sort_order'),
+  sb.from('responses').select('*'),
+  sb.from('requirements').select('*, departments(name)').order('created_at',{ascending:false}),
+  sb.from('v_interview_progress').select('*')
+ ]);
+ for(const res of [d,i,q,r,req,p]){if(res.error){toast(res.error.message);console.error(res.error)}}
+ state={departments:d.data||[],interviews:i.data||[],questions:(q.data||[]).map(x=>({...x,category:x.question_categories?.name||'기타'})),responses:r.data||[],requirements:req.data||[],progress:p.data||[]};
+ if(!selectedInterview&&state.interviews[0])selectedInterview=state.interviews[0].id;
+ render();
+}
+function render(){renderDashboard();renderInterviewList();renderInterviewForm();renderSection();renderQuestions();renderResponses();renderReq()}
+function renderDashboard(){
+ mInterviews.textContent=state.interviews.length;mDone.textContent=state.interviews.filter(x=>x.status==='완료').length;mReq.textContent=state.requirements.length;
+ const avg=state.progress.length?Math.round(state.progress.reduce((s,x)=>s+Number(x.response_rate||0),0)/state.progress.length):0;mRate.textContent=avg+'%';mRateBar.style.width=avg+'%';
+ progressTable.innerHTML='<tr><th>대상</th><th>부서</th><th>상태</th><th>응답</th><th>응답률</th></tr>'+state.progress.map(x=>`<tr><td>${x.interviewee_name}</td><td>${x.department_name||''}</td><td>${x.status}</td><td>${x.answered_questions}/${x.total_questions}</td><td>${x.response_rate}%</td></tr>`).join('');
+}
+function renderInterviewList(){if(!interviewList)return;interviewList.innerHTML=state.interviews.map(i=>`<div class="item ${i.id===selectedInterview?'active':''}" onclick="selectedInterview='${i.id}';currentSection=0;render()"><b>${i.interviewee_name}</b><br><span class="chip blue">${i.departments?.name||''}</span><span class="chip">${i.status}</span></div>`).join('')}
+function renderInterviewForm(){const i=state.interviews.find(x=>x.id===selectedInterview);if(!i){ivForm.classList.add('hidden');return}ivForm.classList.remove('hidden');ivTitle.textContent=i.interviewee_name;ivName.value=i.interviewee_name||'';ivRole.value=i.interviewee_role||'';ivOwner.value=i.interviewer||'';ivStatus.value=i.status||'예정';ivDate.value=i.interview_date||'';ivDept.innerHTML=state.departments.map(d=>`<option value="${d.id}" ${d.id===i.department_id?'selected':''}>${d.name}</option>`).join('')}
+function sections(){return [...new Set(state.questions.map(q=>q.category))].map(c=>({category:c,questions:state.questions.filter(q=>q.category===c)}))}
+function renderSection(){
+ if(!questionArea)return;
+ const i=state.interviews.find(x=>x.id===selectedInterview); if(!i){questionArea.innerHTML='<div class="card">인터뷰 대상을 선택하세요.</div>';return}
+ const secs=sections(); if(currentSection>=secs.length)currentSection=secs.length-1;if(currentSection<0)currentSection=0;const sec=secs[currentSection]; if(!sec){questionArea.innerHTML='<div class="card">질문이 없습니다.</div>';return}
+ const done=sec.questions.filter(q=>getResponse(i.id,q.id)?.answer_text?.trim()).length;
+ sectionTitle.innerHTML=`<span class="chip blue">섹션 ${currentSection+1}/${secs.length}</span> ${sec.category} <span class="chip">${done}/${sec.questions.length}</span>`;
+ sectionBar.style.width=(sec.questions.length?done/sec.questions.length*100:0)+'%';
+ questionArea.innerHTML=sec.questions.map(q=>qHtml(i.id,q)).join('');
+}
+function getResponse(interviewId,questionId){return state.responses.find(r=>r.interview_id===interviewId&&r.question_id===questionId)}
+function qHtml(interviewId,q){const r=getResponse(interviewId,q.id)||{};const pain=[1,2,3,4,5].map(n=>`<button type="button" class="scale-btn ${String(r.pain_level||'')===String(n)?'active':''}" data-pain-btn="${q.id}" data-value="${n}" onclick="setPain('${q.id}','${n}')">${n}</button>`).join('');const pri=[['P0','상'],['P1','중'],['P2','하']].map(([v,l])=>`<label class="radio-pill ${r.importance===v?'active':''}" data-priority-pill="${q.id}" data-value="${v}"><input type="radio" name="priority-${q.id}" ${r.importance===v?'checked':''} onchange="setPriority('${q.id}','${v}')">${l}</label>`).join('');
+return `<div class="qbox"><div class="qid">${q.question_code} · ${q.category}</div><div class="qtitle">${q.question_text}</div><textarea data-answer="${q.id}">${r.answer_text||''}</textarea><div class="grid2"><div><label>Pain Level</label><div class="likert" data-pain="${q.id}" data-value="${r.pain_level||''}">${pain}</div><div class="scale-label"><span>낮음</span><span>높음</span></div></div><div><label>Priority</label><div class="radio-group" data-priority="${q.id}" data-value="${r.importance||''}">${pri}</div><div class="scale-label"><span>상=P0</span><span>중=P1</span><span>하=P2</span></div></div></div></div>`}
+function setPain(id,value){const w=document.querySelector(`[data-pain="${id}"]`);if(!w)return;w.dataset.value=value;w.querySelectorAll('.scale-btn').forEach(b=>b.classList.toggle('active',b.dataset.value===value))}
+function setPriority(id,value){const w=document.querySelector(`[data-priority="${id}"]`);if(!w)return;w.dataset.value=value;w.querySelectorAll('.radio-pill').forEach(p=>p.classList.toggle('active',p.dataset.value===value))}
+async function saveInterviewMeta(){
+ const i=state.interviews.find(x=>x.id===selectedInterview); if(!i)return false;
+ const payload={interviewee_name:ivName.value,department_id:ivDept.value,interviewee_role:ivRole.value,interviewer:ivOwner.value,status:ivStatus.value,interview_date:ivDate.value||null};
+ const {error}=await sb.from('interviews').update(payload).eq('id',i.id); if(error){toast(error.message);return false} return true;
+}
+async function saveSection(){
+ client(); if(!sb){toast('Supabase 연결 필요');return}
+ const i=state.interviews.find(x=>x.id===selectedInterview); if(!i){toast('인터뷰 대상 선택 필요');return}
+ const metaOk=await saveInterviewMeta(); if(!metaOk)return;
+ const rows=[...document.querySelectorAll('textarea[data-answer]')].map(t=>({interview_id:i.id,question_id:t.dataset.answer,answer_text:t.value,pain_level:document.querySelector(`[data-pain="${t.dataset.answer}"]`)?.dataset.value||null,importance:document.querySelector(`[data-priority="${t.dataset.answer}"]`)?.dataset.value||null}));
+ const {error}=await sb.from('responses').upsert(rows,{onConflict:'interview_id,question_id'}); if(error){toast(error.message);return}
+ toast('섹션 저장 완료'); await loadAll();
+}
+function nextSection(){saveSection().then(()=>{const secs=sections();if(currentSection<secs.length-1)currentSection++;renderSection()})}
+function prevSection(){saveSection().then(()=>{if(currentSection>0)currentSection--;renderSection()})}
+async function newInterview(){client();const name=prompt('인터뷰 대상명');if(!name)return;const dept=state.departments[0]?.id||null;const {data,error}=await sb.from('interviews').insert({interviewee_name:name,department_id:dept,status:'예정'}).select().single();if(error){toast(error.message);return}selectedInterview=data.id;currentSection=0;await loadAll()}
+function renderQuestions(){if(!qCat)return;const cats=['전체',...new Set(state.questions.map(q=>q.category))];const cur=qCat.value||'전체';qCat.innerHTML=cats.map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('');const kw=(qSearch.value||'').trim();const cat=qCat.value||'전체';const qs=state.questions.filter(q=>(cat==='전체'||q.category===cat)&&(!kw||(q.question_text+q.question_code+q.category).includes(kw)));questionList.innerHTML=qs.map(q=>`<div class="card"><span class="chip blue">${q.category}</span><span class="chip">${q.question_code}</span><h3>${q.question_text}</h3></div>`).join('')}
+function renderResponses(){if(!responseArea)return;const kw=(rSearch?.value||'').trim();let rows=[];state.interviews.forEach(i=>state.questions.forEach(q=>{const r=getResponse(i.id,q.id);if(r?.answer_text)rows.push({i,q,r})}));rows=rows.filter(x=>!kw||(x.i.interviewee_name+x.q.question_text+x.r.answer_text).includes(kw));if((resultView?.value||'byQuestion')==='matrix'){responseArea.innerHTML='<div class="card"><table><tr><th>인터뷰</th><th>질문</th><th>답변</th><th>Pain</th><th>Priority</th></tr>'+rows.map(x=>`<tr><td>${x.i.interviewee_name}</td><td>${x.q.question_code}. ${x.q.question_text}</td><td>${x.r.answer_text}</td><td>${x.r.pain_level||''}</td><td>${x.r.importance||''}</td></tr>`).join('')+'</table></div>'}else{responseArea.innerHTML=rows.map(x=>`<div class="card"><span class="chip blue">${x.q.category}</span><span class="chip">${x.q.question_code}</span><span class="chip">${x.i.interviewee_name}</span><h3>${x.q.question_text}</h3><p>${x.r.answer_text}</p><span class="chip warn">Pain ${x.r.pain_level||'-'}</span><span class="chip purple">${x.r.importance||'-'}</span></div>`).join('')||'<div class="card">저장된 응답이 없습니다.</div>'}
+}
+function renderReq(){if(!reqTable)return;reqTable.innerHTML='<tr><th>우선순위</th><th>제목</th><th>상태</th><th>부서</th></tr>'+state.requirements.map(r=>`<tr><td>${r.priority}</td><td>${r.title}</td><td>${r.status}</td><td>${r.departments?.name||''}</td></tr>`).join('')}
+async function newRequirement(){client();const title=prompt('요구사항명');if(!title)return;const {error}=await sb.from('requirements').insert({title,priority:'P1',status:'초안'});if(error){toast(error.message);return}toast('요구사항 추가 완료');await loadAll()}
+function csv(rows){return '\ufeff'+rows.map(r=>r.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n')}
+function down(text,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
+function downloadCSV(){const rows=[['interview','department','code','category','question','answer','pain','priority']];state.interviews.forEach(i=>state.questions.forEach(q=>{const r=getResponse(i.id,q.id);if(r?.answer_text)rows.push([i.interviewee_name,i.departments?.name,q.question_code,q.category,q.question_text,r.answer_text,r.pain_level,r.importance])}));down(csv(rows),'bo_interview_responses.csv','text/csv')}
+function downloadJSON(){down(JSON.stringify(state,null,2),'bo_interview_data.json','application/json')}
+window.onload=()=>{const u=localStorage.getItem('sb_url'),k=localStorage.getItem('sb_key');if(u)sbUrl.value=u;if(k)sbKey.value=k;if(u&&k){client();loadAll()}}
+</script>
+</body>
+</html>
